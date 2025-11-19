@@ -1,0 +1,6 @@
+{
+  "format": "pdf",
+  "sections": ["executive_summary", "vulnerability_details", "ai_recommendations"],
+  "severityFilter": "all",
+  "includeCode": true
+}

@@ -1,0 +1,20 @@
+{
+  "scan": {
+    "id": "testscan1",
+    "createdAt": "2025-11-08T00:00:00Z",
+    "totalFiles": 1
+  },
+  "vulnerabilities": [
+    {
+      "filename": "example.py",
+      "lineNumber": 12,
+      "vulnerabilityType": "xss",
+      "severity": "high",
+      "cweId": "CWE-79",
+      "detectionTool": "Semgrep",
+      "confidence": 90,
+      "description": "Reflected XSS in output rendering",
+      "codeSnippet": "<script>alert(1)</script>\nprint('vulnerable')"
+    }
+  ]
+}

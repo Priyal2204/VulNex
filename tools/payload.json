@@ -1,0 +1,7 @@
+{
+  "vulnerability_type": "xss",
+  "code_snippet": "<script>alert(1)</script>",
+  "severity": "HIGH",
+  "detection_tool": "semgrep",
+  "confidence": 70
+}
