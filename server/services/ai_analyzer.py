@@ -11,6 +11,24 @@ import time
 import requests
 from typing import Optional, Tuple, Dict, Any, List
 
+# Load .env file if present (works without python-dotenv)
+def _load_dotenv():
+    env_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+    env_path = os.path.normpath(env_path)
+    if os.path.exists(env_path):
+        with open(env_path, encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, _, val = line.partition('=')
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+
+_load_dotenv()
+
 # Config from env
 HF_KEY = os.getenv("HUGGINGFACE_API_KEY")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -52,84 +70,43 @@ class AIFixer:
 
     # ---------- Gemini ----------
     def _call_gemini(self, instruction: str) -> Tuple[Optional[str], Dict[str, Any]]:
-        """Call Gemini if available. Return text or None, and diagnostic dict."""
+        """Call Gemini generateContent API."""
         diag: Dict[str, Any] = {}
         if not self.use_gemini:
             diag["status"] = "skipped"
             return None, diag
 
-        # Use query param key flow (works only if the key/project has access)
-        # Try v1 then v1beta2 endpoints to be robust
-        tried_urls = []
+        # Use the current Gemini generateContent endpoint
+        model = self.gemini_model.replace("models/", "")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.gemini_key}"
         body = {
-            "prompt": {
-                "text": instruction
-            },
-            "temperature": 0.2,
-            "maxOutputTokens": 512
+            "contents": [{"parts": [{"text": instruction}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 512}
         }
 
-        base_paths = [
-            "https://generativelanguage.googleapis.com/v1",
-            "https://generativelanguage.googleapis.com/v1beta2"
-        ]
+        resp, err = safe_post(url, {"Content-Type": "application/json"}, body)
+        if err:
+            diag["error"] = err
+            return None, diag
 
-        # construct model variant(s)
-        model_variants = [self.gemini_model, self.gemini_model.replace("models/", ""), self.gemini_model + ""]  # minor variants
-        for bp in base_paths:
-            for mv in model_variants:
-                url = f"{bp}/models/{mv}:generate?key={self.gemini_key}"
-                tried_urls.append(url)
-                resp, err = safe_post(url, {"Content-Type": "application/json"}, body)
-                if err:
-                    diag.setdefault("tries", []).append({"url": url, "error": err})
-                    continue
-                diag.setdefault("tries", []).append({"url": url, "status_code": resp.status_code, "text_snippet": (resp.text[:500] if resp.text else "")})
-                if resp.status_code == 200:
-                    try:
-                        data = resp.json()
-                    except Exception:
-                        data = {"raw": resp.text}
-                    # attempt to parse typical shapes
-                    if isinstance(data, dict):
-                        # check for candidates / output / text
-                        if "candidates" in data and isinstance(data["candidates"], list) and data["candidates"]:
-                            content = data["candidates"][0]
-                            # content may hold structured parts
-                            if isinstance(content, dict):
-                                # some Gemini shapes: content->text or content->parts
-                                if "content" in content and isinstance(content["content"], list):
-                                    # best-effort join
-                                    text_parts = []
-                                    for p in content["content"]:
-                                        if isinstance(p, dict):
-                                            text_parts.append(p.get("text") or p.get("content") or "")
-                                        else:
-                                            text_parts.append(str(p))
-                                    text = "\n".join(filter(None, text_parts)).strip()
-                                    diag["source"] = "gemini_candidates_content"
-                                    return text, diag
-                                if "text" in content:
-                                    diag["source"] = "gemini_candidates_text"
-                                    return content.get("text", ""), diag
-                        if "output" in data and isinstance(data["output"], list):
-                            text = "".join([o.get("content", "") if isinstance(o, dict) else str(o) for o in data["output"]])
-                            diag["source"] = "gemini_output"
-                            return text.strip(), diag
-                        if "text" in data:
-                            diag["source"] = "gemini_text"
-                            return data.get("text", ""), diag
-                    # fallback return raw text
-                    try:
-                        return resp.text.strip(), diag
-                    except Exception:
-                        return None, diag
-                else:
-                    # non-200: keep trying
-                    continue
+        diag["status_code"] = resp.status_code
+        diag["text_snippet"] = (resp.text[:500] if resp.text else "")
 
+        if resp.status_code == 200:
+            try:
+                data = resp.json()
+                # Standard Gemini generateContent response shape
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text = "".join(p.get("text", "") for p in parts).strip()
+                    if text:
+                        diag["source"] = "gemini_generateContent"
+                        return text, diag
+            except Exception as e:
+                diag["parse_error"] = str(e)
+        
         diag["status"] = "no_success"
-        diag["tried_urls"] = tried_urls
         return None, diag
 
     # ---------- Hugging Face ----------

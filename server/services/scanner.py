@@ -78,10 +78,12 @@ class SecurityScanner:
                 '--no-git-ignore',
                 file_path
             ]
-            # Force UTF-8 decoding and replace undecodable bytes. Semgrep emits
-            # UTF-8; on Windows the default encoding can be cp1252 which fails
-            # when semgrep outputs characters outside that codepage.
-            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace')
+            # Force UTF-8 on Windows to avoid cp1252 UnicodeEncodeError when
+            # semgrep downloads rules containing non-cp1252 characters.
+            env = os.environ.copy()
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', env=env)
             # semgrep returns exit code 0 when no findings, 1 when findings are found
             # and >1 on errors. Accept both 0 and 1 as successful runs to capture findings.
             if result.returncode in [0, 1]:

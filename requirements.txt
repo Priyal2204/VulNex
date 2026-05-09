@@ -1,0 +1,7 @@
+bandit
+semgrep
+reportlab
+openpyxl
+python-dotenv
+google-generativeai
+requests

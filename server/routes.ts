@@ -12,6 +12,11 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads', { recursive: true });
+}
+
 // Configure multer for file uploads with filename preservation
 const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
