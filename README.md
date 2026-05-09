@@ -1,6 +1,6 @@
 # VulNex — LLM-Powered Vulnerability Detection Tool
 
-A full-stack, LLM-powered security vulnerability detection tool that combines static analysis with AI-driven assessment. Upload your code files, get real-time scan progress, detailed vulnerability findings with Gemini-generated fix suggestions, and downloadable security reports.
+A full-stack, LLM-powered security vulnerability detection tool that combines static analysis with AI-driven assessment. Upload your code files, get real-time scan progress, detailed vulnerability findings with Gemini-generated fix suggestions, and downloadable security reports. Live at https://vulnex-llm-powered.onrender.com/
 
 ---
 
