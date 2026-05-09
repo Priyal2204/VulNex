@@ -79,9 +79,7 @@
     "zod-validation-error": "^3.4.0",
     "esbuild": "^0.25.0",
     "vite": "^5.4.19",
-    "@vitejs/plugin-react": "^4.3.2"
-  },
-  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.2",
     "@replit/vite-plugin-cartographer": "^0.3.0",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
