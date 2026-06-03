@@ -12,6 +12,10 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Resolve project root: when compiled to dist/, __dirname is .../dist, so go up one level.
+// When running as source (server/), going up one level also gives the project root.
+const PROJECT_ROOT = path.join(__dirname, '..');
+
 // Ensure uploads directory exists
 if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads', { recursive: true });
@@ -285,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/reports/download/:scanId', async (req, res) => {
     try {
       const { scanId } = req.params;
-      const reportsDir = path.join(__dirname, '..', 'reports');
+      const reportsDir = path.join(PROJECT_ROOT, 'reports');
       if (!fs.existsSync(reportsDir)) return res.status(404).json({ error: 'No reports available' });
 
       const files = fs.readdirSync(reportsDir).filter(f => f.startsWith(`security_report_${scanId}_`));
@@ -381,7 +385,7 @@ function getLanguageFromExtension(filename: string): string {
 // Run Python scanner on uploaded files
 async function runPythonScanner(scanId: string, filePaths: string[]): Promise<any[]> {
   return new Promise((resolve, reject) => {
-    const pythonScript = path.join(__dirname, 'services', 'scanner.py');
+    const pythonScript = path.join(PROJECT_ROOT, 'server', 'services', 'scanner.py');
     const args = [pythonScript, scanId, ...filePaths];
     
     console.log(`Running Python scanner: python ${args.join(' ')}`);
@@ -427,7 +431,7 @@ async function runPythonScanner(scanId: string, filePaths: string[]): Promise<an
 // Run Python scanner but return raw stdout/stderr and exit code for debugging
 async function runPythonScannerRaw(scanId: string, filePaths: string[]): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const pythonScript = path.join(__dirname, 'services', 'scanner.py');
+    const pythonScript = path.join(PROJECT_ROOT, 'server', 'services', 'scanner.py');
     const args = [pythonScript, scanId, ...filePaths];
 
     console.log(`Running Python scanner (raw): python ${args.join(' ')}`);
@@ -465,7 +469,7 @@ async function runPythonScannerRaw(scanId: string, filePaths: string[]): Promise
 // Run the Python report generator and return stdout/stderr and reportPath (if produced)
 async function runPythonReportGenerator(scanId: string, scan: any, vulnerabilities: any[], config: any): Promise<{ code: number | null; stdout: string; stderr: string; reportPath?: string }> {
   return new Promise((resolve, reject) => {
-    const pythonScript = path.join(__dirname, 'services', 'report_generator.py');
+    const pythonScript = path.join(PROJECT_ROOT, 'server', 'services', 'report_generator.py');
     // Pass scan data and config as JSON arguments
     const args = [pythonScript, JSON.stringify({ scan, vulnerabilities }), JSON.stringify(config)];
 
@@ -619,7 +623,7 @@ async function addAIAnalysisToVulnerabilities(scanId: string) {
   for (const vuln of vulnerabilities) {
     try {
       // Call the Python AI analyzer for each vulnerability and update the record
-      const pythonScript = path.join(__dirname, 'services', 'ai_analyzer.py');
+      const pythonScript = path.join(PROJECT_ROOT, 'server', 'services', 'ai_analyzer.py');
       const args = [pythonScript, JSON.stringify(vuln)];
 
       console.log(`Running AI analyzer: python ${args.join(' ')}`);
