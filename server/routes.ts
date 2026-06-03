@@ -12,9 +12,10 @@ import { dirname } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Resolve project root: when compiled to dist/, __dirname is .../dist, so go up one level.
-// When running as source (server/), going up one level also gives the project root.
-const PROJECT_ROOT = path.join(__dirname, '..');
+// Use process.cwd() for the project root — this is always the directory the process
+// was started from (/opt/render/project/src on Render), so Python scripts are reliably
+// found at PROJECT_ROOT/server/services/ regardless of where the compiled JS lives.
+const PROJECT_ROOT = process.cwd();
 
 // Ensure uploads directory exists
 if (!fs.existsSync('uploads')) {
